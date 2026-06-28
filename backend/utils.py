@@ -1,6 +1,10 @@
 import os
 import google.generativeai as genai
 from typing import List, Dict, Any
+from dotenv import load_dotenv
+
+# Load local .env file
+load_dotenv()
 
 # Configure Gemini API
 API_KEY = os.environ.get("GEMINI_API_KEY", "")
