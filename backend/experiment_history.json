@@ -1,0 +1,17 @@
+[
+    {
+        "run_name": "run_20260602_113147",
+        "timestamp": "2026-06-02T11:32:14.743228",
+        "parameters": {
+            "rf_estimators": 100,
+            "kmeans_clusters": 3,
+            "fraud_contamination": 0.05
+        },
+        "metrics": {
+            "approval_accuracy": 0.8699186991869918,
+            "default_auc": 0.5204334365325078,
+            "interest_rate_rmse": 1.9172828394591506,
+            "segmentation_silhouette": 0.6826387019650656
+        }
+    }
+]

@@ -1,0 +1,7 @@
+column,sample_uniques
+Gender,"1, 0"
+Married,"0, 1"
+Dependents,"0, 1, 2, 3+"
+Education,"1, 0"
+Self_Employed,"0, 1"
+Property_Area,"2, 0, 1"
