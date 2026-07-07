@@ -4,8 +4,9 @@ import numpy as np
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from backend.models import LoanApplicationRequest, LoanPredictionResponse, ChatRequest, ChatResponse
+from backend.models import LoanApplicationRequest, LoanPredictionResponse, ChatRequest, ChatResponse, UserAuth, UserResponse
 from backend.utils import calculate_loan_recommendation, generate_recommendations, query_ai_financial_assistant
+from backend.database import db_signup, db_login, db_log_prediction, db_get_logs, db_get_all_logs
 
 # Try importing shap for model explanations
 try:
@@ -245,7 +246,7 @@ def predict_loan(req: LoanApplicationRequest):
         }
         segment_name = cluster_names.get(cluster, "Regular Customer")
             
-        return LoanPredictionResponse(
+        response_obj = LoanPredictionResponse(
             approved=approved,
             risk_score=risk_score,
             risk_level=risk_level,
@@ -259,6 +260,14 @@ def predict_loan(req: LoanApplicationRequest):
             segment_cluster=cluster,
             segment_name=segment_name
         )
+        
+        # Log prediction to DB if user_id is provided
+        if req.user_id:
+            inputs_dict = {k: v for k, v in req.dict().items() if k != "user_id"}
+            outputs_dict = response_obj.dict()
+            db_log_prediction(req.user_id, inputs_dict, outputs_dict)
+            
+        return response_obj
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
 
@@ -285,3 +294,25 @@ def get_mlops_runs():
             return json.load(f)
     except Exception:
         return []
+
+@app.post("/auth/signup", response_model=UserResponse)
+def signup(auth: UserAuth):
+    res = db_signup(auth.username, auth.password)
+    if not res["success"]:
+        raise HTTPException(status_code=400, detail=res["message"])
+    return UserResponse(**res)
+
+@app.post("/auth/login", response_model=UserResponse)
+def login(auth: UserAuth):
+    res = db_login(auth.username, auth.password)
+    if not res["success"]:
+        raise HTTPException(status_code=401, detail=res["message"])
+    return UserResponse(**res)
+
+@app.get("/logs/{user_id}")
+def get_user_logs(user_id: str):
+    return db_get_logs(user_id)
+
+@app.get("/logs")
+def get_all_logs():
+    return db_get_all_logs()

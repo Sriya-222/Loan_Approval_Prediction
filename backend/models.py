@@ -13,6 +13,17 @@ class LoanApplicationRequest(BaseModel):
     Loan_Amount_Term: float = Field(..., example=360.0) # in days or months, standard is 360
     Credit_History: float = Field(..., example=1.0) # 1.0 = Good, 0.0 = Poor
     Property_Area: str = Field(..., example="Urban")
+    user_id: Optional[str] = Field(default=None, example="user123")
+
+class UserAuth(BaseModel):
+    username: str = Field(..., min_length=3, max_length=50, example="johndoe")
+    password: str = Field(..., min_length=6, example="password123")
+
+class UserResponse(BaseModel):
+    success: bool
+    message: str
+    user_id: Optional[str] = None
+    username: Optional[str] = None
 
 class LoanPredictionResponse(BaseModel):
     approved: bool

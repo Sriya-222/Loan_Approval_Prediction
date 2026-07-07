@@ -88,20 +88,94 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Navigation
-st.sidebar.markdown("<h2 style='text-align: center; color: #3b82f6;'>Credit Risk AI</h2>", unsafe_allow_html=True)
-page = st.sidebar.radio(
-    "Navigation Menu",
-    ["Loan Application & AI Scoring", "AI Financial Assistant", "Admin Analytics & MLOps Console"]
-)
-
 # Initialize Session State variables
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+if "username" not in st.session_state:
+    st.session_state.username = ""
+if "user_id" not in st.session_state:
+    st.session_state.user_id = ""
 if "last_prediction" not in st.session_state:
     st.session_state.last_prediction = None
 if "last_inputs" not in st.session_state:
     st.session_state.last_inputs = None
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
+
+import time
+
+# Authentication Gate
+if not st.session_state.logged_in:
+    st.markdown("<h1 class='main-title' style='text-align: center;'>Credit Risk Intelligence Platform</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #9ca3af;'>Please login or register an account to access credit scoring models, risk pricing, and AI support.</p>", unsafe_allow_html=True)
+    
+    col_left, col_mid, col_right = st.columns([1, 1.2, 1])
+    with col_mid:
+        st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+        auth_tab_login, auth_tab_signup = st.tabs(["Secure Login", "Register Account"])
+        
+        with auth_tab_login:
+            with st.form("login_form"):
+                username_in = st.text_input("Username")
+                password_in = st.text_input("Password", type="password")
+                login_btn = st.form_submit_button("Access Platform", use_container_width=True)
+                
+                if login_btn:
+                    if not username_in or not password_in:
+                        st.error("Please fill in both fields.")
+                    else:
+                        try:
+                            res = requests.post(f"{API_URL}/auth/login", json={"username": username_in, "password": password_in})
+                            if res.status_code == 200:
+                                data = res.json()
+                                st.session_state.logged_in = True
+                                st.session_state.username = data["username"]
+                                st.session_state.user_id = data["user_id"]
+                                st.success("Logged in successfully!")
+                                time.sleep(0.5)
+                                st.rerun()
+                            else:
+                                st.error(res.json().get("detail", "Invalid username or password."))
+                        except Exception as e:
+                            st.error(f"Cannot connect to backend: {e}")
+                            
+        with auth_tab_signup:
+            with st.form("signup_form"):
+                username_up = st.text_input("Choose Username")
+                password_up = st.text_input("Choose Password", type="password")
+                signup_btn = st.form_submit_button("Create Account", use_container_width=True)
+                
+                if signup_btn:
+                    if len(username_up) < 3:
+                        st.error("Username must be at least 3 characters.")
+                    elif len(password_up) < 6:
+                        st.error("Password must be at least 6 characters.")
+                    else:
+                        try:
+                            res = requests.post(f"{API_URL}/auth/signup", json={"username": username_up, "password": password_up})
+                            if res.status_code == 200:
+                                st.success("Account created successfully! You can now log in.")
+                            else:
+                                st.error(res.json().get("detail", "Registration failed. Username may already exist."))
+                        except Exception as e:
+                            st.error(f"Cannot connect to backend: {e}")
+        st.markdown("</div>", unsafe_allow_html=True)
+    st.stop()
+
+# Navigation (if logged in)
+st.sidebar.markdown(f"<h3 style='text-align: center; color: #9ca3af;'>Welcome, {st.session_state.username}!</h3>", unsafe_allow_html=True)
+page = st.sidebar.radio(
+    "Navigation Menu",
+    ["Loan Application & AI Scoring", "AI Financial Assistant", "Admin Analytics & MLOps Console"]
+)
+if st.sidebar.button("Log Out", use_container_width=True):
+    st.session_state.logged_in = False
+    st.session_state.username = ""
+    st.session_state.user_id = ""
+    st.session_state.last_prediction = None
+    st.session_state.last_inputs = None
+    st.session_state.chat_history = []
+    st.rerun()
 
 def make_gauge_chart(value, title, color_scale, suffix="%"):
     fig = go.Figure(go.Indicator(
@@ -171,7 +245,8 @@ if page == "Loan Application & AI Scoring":
                 "LoanAmount": float(loan_amount),
                 "Loan_Amount_Term": float(term),
                 "Credit_History": float(credit_history),
-                "Property_Area": property_area
+                "Property_Area": property_area,
+                "user_id": st.session_state.user_id
             }
             
             # Query backend prediction API
@@ -280,6 +355,31 @@ if page == "Loan Application & AI Scoring":
                 st.plotly_chart(fig_shap, use_container_width=True)
         else:
             st.info("Submit an applicant's parameters using the form on the left to review their credit risk indicators and decision explanations here.")
+            
+    # Personal History Section
+    st.markdown("---")
+    st.subheader("My Past Applications History")
+    try:
+        res = requests.get(f"{API_URL}/logs/{st.session_state.user_id}")
+        if res.status_code == 200 and res.json():
+            logs_list = res.json()
+            table_rows = []
+            for item in logs_list:
+                table_rows.append({
+                    "Timestamp": item["timestamp"][:19].replace("T", " "),
+                    "Monthly Income (₹)": f"{int(item['inputs']['ApplicantIncome'] + item['inputs']['CoapplicantIncome']):,}",
+                    "Loan Requested (₹)": f"{int(item['inputs']['LoanAmount'] * 1000):,}",
+                    "Term (Months)": int(item['inputs']['Loan_Amount_Term']),
+                    "Risk Score": f"{item['outputs']['risk_score']:.1f}%",
+                    "Risk Level": item['outputs']['risk_level'],
+                    "Decision": "Approved" if item['outputs']['approved'] else "Rejected",
+                    "Fraud Check": "Alert" if item['outputs']['fraud_detected'] else "Passed"
+                })
+            st.dataframe(pd.DataFrame(table_rows), use_container_width=True)
+        else:
+            st.info("No past applications found for this account. Submit the form above to log your first underwriting request.")
+    except Exception as e:
+        st.warning(f"Unable to load application history: {e}")
 
 # Page 2: AI Financial Assistant
 elif page == "AI Financial Assistant":
@@ -355,34 +455,56 @@ elif page == "Admin Analytics & MLOps Console":
     except Exception:
         pass
         
+    # Query all logs from database to calculate real metrics
+    db_logs = []
+    try:
+        res = requests.get(f"{API_URL}/logs")
+        if res.status_code == 200:
+            db_logs = res.json()
+    except Exception:
+        pass
+
     # Visualizing summary metrics
+    if db_logs:
+        total_apps = len(db_logs)
+        approved_apps = sum(1 for l in db_logs if l["outputs"]["approved"])
+        approval_rate_val = (approved_apps / total_apps) * 100
+        avg_default_val = np.mean([l["outputs"]["default_probability"] for l in db_logs]) * 100
+        fraud_flags_val = sum(1 for l in db_logs if l["outputs"]["fraud_detected"])
+    else:
+        # Fallback default historical statistics
+        total_apps = 614
+        approval_rate_val = 68.7
+        avg_default_val = 12.2
+        fraud_flags_val = 28
+
     col_stat1, col_stat2, col_stat3, col_stat4 = st.columns(4)
     with col_stat1:
-        st.markdown("""
+        st.markdown(f"""
         <div class='glass-card'>
             <div class='metric-label'>Total Applications</div>
-            <div class='metric-value'>614</div>
+            <div class='metric-value'>{total_apps}</div>
         </div>
         """, unsafe_allow_html=True)
     with col_stat2:
-        st.markdown("""
+        st.markdown(f"""
         <div class='glass-card'>
             <div class='metric-label'>Approval Rate</div>
-            <div class='metric-value'>68.7%</div>
+            <div class='metric-value'>{approval_rate_val:.1f}%</div>
         </div>
         """, unsafe_allow_html=True)
     with col_stat3:
-        st.markdown("""
+        st.markdown(f"""
         <div class='glass-card'>
             <div class='metric-label'>Avg Default Rate</div>
-            <div class='metric-value'>12.2%</div>
+            <div class='metric-value'>{avg_default_val:.1f}%</div>
         </div>
         """, unsafe_allow_html=True)
     with col_stat4:
-        st.markdown("""
+        st.markdown(f"""
         <div class='glass-card'>
             <div class='metric-label'>Fraud Alert Flags</div>
-            <div class='metric-value'>28</div>
+            <div class='metric-value'>{fraud_flags_val}</div>
         </div>
         """, unsafe_allow_html=True)
         
@@ -393,7 +515,6 @@ elif page == "Admin Analytics & MLOps Console":
     with col_plot1:
         st.subheader("Customer Segmentation (Clustering Visualizer)")
         # Load sample coordinates from train.csv to display cluster visualization
-        # We can dynamically construct K-Means outputs to visualize
         np.random.seed(42)
         income_pts = np.random.exponential(5000, 300) + 1500
         loan_pts = income_pts * 0.02 + np.random.normal(20, 15, 300)
@@ -414,6 +535,31 @@ elif page == "Admin Analytics & MLOps Console":
             "LoanAmount": loan_pts,
             "Cluster": clusters
         })
+        
+        # Merge actual database logs into segment dataframe for live visualization
+        if db_logs:
+            log_records = []
+            for log in db_logs:
+                # Add total income
+                tot_inc = log["inputs"]["ApplicantIncome"] + log["inputs"]["CoapplicantIncome"]
+                loan_val = log["inputs"]["LoanAmount"]
+                seg_name = log["outputs"]["segment_name"]
+                
+                # Align cluster names
+                if "Premium" in seg_name:
+                    c_name = "Premium Customers"
+                elif "High Risk" in seg_name or "Subprime" in seg_name:
+                    c_name = "High Risk / Subprime"
+                else:
+                    c_name = "Regular Customers"
+                    
+                log_records.append({
+                    "Income": tot_inc,
+                    "LoanAmount": loan_val,
+                    "Cluster": c_name
+                })
+            if log_records:
+                df_seg = pd.concat([df_seg, pd.DataFrame(log_records)], ignore_index=True)
         
         fig_seg = px.scatter(
             df_seg,
@@ -440,7 +586,6 @@ elif page == "Admin Analytics & MLOps Console":
         # If there is a last prediction, overlay it as a big gold star!
         if st.session_state.last_prediction and st.session_state.last_inputs:
             inputs = st.session_state.last_inputs
-            pred = st.session_state.last_prediction
             fig_seg.add_trace(go.Scatter(
                 x=[inputs["ApplicantIncome"] + inputs["CoapplicantIncome"]],
                 y=[inputs["LoanAmount"]],
