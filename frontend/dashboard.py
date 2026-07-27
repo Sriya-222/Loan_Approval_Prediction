@@ -135,7 +135,11 @@ if not st.session_state.logged_in:
                                 time.sleep(0.5)
                                 st.rerun()
                             else:
-                                st.error(res.json().get("detail", "Invalid username or password."))
+                                try:
+                                    err_msg = res.json().get("detail", "Invalid username or password.")
+                                except Exception:
+                                    err_msg = f"Server returned error code {res.status_code}: {res.text[:100]}"
+                                st.error(err_msg)
                         except Exception as e:
                             st.error(f"Cannot connect to backend: {e}")
                             
@@ -156,7 +160,11 @@ if not st.session_state.logged_in:
                             if res.status_code == 200:
                                 st.success("Account created successfully! You can now log in.")
                             else:
-                                st.error(res.json().get("detail", "Registration failed. Username may already exist."))
+                                try:
+                                    err_msg = res.json().get("detail", "Registration failed. Username may already exist.")
+                                except Exception:
+                                    err_msg = f"Server returned error code {res.status_code}: {res.text[:100]}"
+                                st.error(err_msg)
                         except Exception as e:
                             st.error(f"Cannot connect to backend: {e}")
         st.markdown("</div>", unsafe_allow_html=True)
@@ -261,7 +269,11 @@ if page == "Loan Application & AI Scoring":
                             {"role": "model", "content": f"Hi there! I am your AI Financial Assistant. I see that your loan prediction is generated. Ask me any questions, like 'Why was my loan rejected?' or 'How is my interest rate computed?'"}
                         ]
                     else:
-                        st.error(f"Error: {res.json().get('detail', 'Unknown backend error')}")
+                        try:
+                            err_msg = res.json().get('detail', 'Unknown backend error')
+                        except Exception:
+                            err_msg = f"Server returned error code {res.status_code}: {res.text[:100]}"
+                        st.error(f"Error: {err_msg}")
                 except Exception as e:
                     st.error(f"Failed to connect to the backend server at {API_URL}. Details: {e}")
                     
