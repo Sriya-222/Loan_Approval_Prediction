@@ -46,7 +46,7 @@ def start_frontend():
     print("Starting Streamlit Dashboard...")
     dashboard_script = os.path.join(os.path.dirname(__file__), "frontend", "dashboard.py")
     cmd = [
-        "streamlit", "run", dashboard_script
+        sys.executable, "-m", "streamlit", "run", dashboard_script
     ]
     subprocess.run(cmd)
 

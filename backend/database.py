@@ -133,6 +133,7 @@ def db_login(username: str, password: str) -> dict:
             if verify_password(password, user["password_hash"]):
                 return {
                     "success": True,
+                    "message": "Logged in successfully.",
                     "user_id": str(user["_id"]),
                     "username": username
                 }
@@ -146,6 +147,7 @@ def db_login(username: str, password: str) -> dict:
                 if verify_password(password, u["password_hash"]):
                     return {
                         "success": True,
+                        "message": "Logged in successfully.",
                         "user_id": u["id"],
                         "username": username
                     }

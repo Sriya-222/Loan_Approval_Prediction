@@ -21,7 +21,7 @@ class UserAuth(BaseModel):
 
 class UserResponse(BaseModel):
     success: bool
-    message: str
+    message: Optional[str] = "Success"
     user_id: Optional[str] = None
     username: Optional[str] = None
 
