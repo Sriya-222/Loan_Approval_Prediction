@@ -379,7 +379,9 @@ if page == "Loan Application & AI Scoring":
             for item in logs_list:
                 table_rows.append({
                     "Timestamp": item["timestamp"][:19].replace("T", " "),
-                    "Monthly Income (₹)": f"{int(item['inputs']['ApplicantIncome'] + item['inputs']['CoapplicantIncome']):,}",
+                    "Applicant Income (₹)": f"{int(item['inputs']['ApplicantIncome']):,}",
+                    "Co-Applicant Income (₹)": f"{int(item['inputs'].get('CoapplicantIncome', 0)):,}",
+                    "Total Household Income (₹)": f"{int(item['inputs']['ApplicantIncome'] + item['inputs'].get('CoapplicantIncome', 0)):,}",
                     "Loan Requested (₹)": f"{int(item['inputs']['LoanAmount'] * 1000):,}",
                     "Term (Months)": int(item['inputs']['Loan_Amount_Term']),
                     "Risk Score": f"{item['outputs']['risk_score']:.1f}%",
